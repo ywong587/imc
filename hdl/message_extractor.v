@@ -36,7 +36,7 @@ module message_extractor (
       output  reg [31:0]  out_bytemask
       );
 
-      reg     [3:0]   state;
+      reg     [3:0]   state,next;
       reg     [15:0]  msg_count;
       reg     [15:0]  msg_length;
 
@@ -45,18 +45,22 @@ module message_extractor (
       reg     [63:0]  pl1;
       reg     [3:0]   pl1_size;
 
-			integer		i;
-			
-      parameter IDLE          = 0;
-      parameter FIRST_PKT     = 1;
-      parameter MIDDLE_PKT    = 2;
+      integer   i;
 
-      parameter LEN_PKT_B76   = 3;
-      parameter LEN_PKT_B10   = 4;
-      parameter LEN_PKT_B17   = 5;
-      
-      parameter LAST_PKT      = 8;
-
+      parameter IDLE        = 0,
+                FIRST_PKT   = 1,
+                MIDDLE_PKT  = 2,
+                LEN_LOC0    = 3,
+                LEN_LOC1    = 4,
+                LEN_LOC2    = 5,
+                LEN_LOC3    = 6,
+                LEN_LOC4    = 7,
+                LEN_LOC5    = 8,
+                LEN_LOC6    = 9,
+                LEN_LOC7    = 10,
+                LAST_PKT    = 11;
+  
+ 
   always @ (negedge clk or negedge reset_n) begin
       if (!reset_n) begin
         state         <= IDLE;
@@ -75,7 +79,7 @@ module message_extractor (
   //   is always 4 bytes.
 
   else begin
-    case (state) 
+    case (state)
       IDLE:
         if (in_valid & in_startofpacket) begin
           state <= FIRST_PKT;
@@ -106,7 +110,7 @@ module message_extractor (
               // assume The first byte following the "Message Length"
               // is the most significant byte of the payload data.
               if (pl0_size != 4'd0) begin
-                // out_data <= {out_data, pl0, in_data[63:56]};                              	                
+                // out_data <= {out_data, pl0, in_data[63:56]};
                 out_data <= (out_data<<(pl0_size*8+8) | (pl0<<8) | in_data[63:56]);
                 out_bytemask  <= {out_bytemask, pl0_size, 1'b1};
               end
@@ -302,8 +306,7 @@ module message_extractor (
             else begin  // (msg_length > 16'd7)
             end
           end
-//       LEN_PKT_B76:
-//       LEN_PKT_B10:
+
       LEN_PKT_B17:
           if (in_valid) begin
             if (msg_length == 16'd0) begin
