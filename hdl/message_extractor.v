@@ -40,69 +40,149 @@ module message_extractor (
   always @ (negedge clk or negedge reset_n)
     if (!reset_n)   state <= IDLE;
     else            state <= next;
-
-  always @ (state or in_startofpacket or in_endofpacket) begin
+  always @ (state or in_valid or in_startofpacket or in_endofpacket) begin
     next =4'bx;
       case(state)
-        IDLE       :  if (in_valid & in_startofpacket)  next <= FIRST_PKT;
+        IDLE       :  if (in_valid&in_startofpacket)next = FIRST_PKT;
 
         FIRST_PKT  :  if (in_valid) begin
-                        if (in_endofpacket)         next = LAST_PKT;	// ?
-                        else if (msg_length==16'd0) next = LEN_LOC7;	// ?
-                        else if (msg_length==16'd1) next = LEN_LOC6;	// ?
-                        else if (msg_length==16'd2) next = LEN_LOC5;	// ?	
-                        else if (msg_length==16'd3) next = LEN_LOC4;	// ? min msg_length is 8
-                        else if (msg_length==16'd4) next = LEN_LOC3;
-                        else if (msg_length==16'd5) next = LEN_LOC2;
+                        if      (msg_length==16'd7) next = LEN_LOC0;
                         else if (msg_length==16'd6) next = LEN_LOC1;
-                        else if (msg_length==16'd7) next = LEN_LOC0;
-                        else                        next = MID_PKT;   // dup
-                      end
-                      
-        MID_PKT    :  if (in_valid) begin
-                        if (in_endofpacket)         next = LAST_PKT;
-                        else if (msg_length==16'd0) next = LEN_LOC7;
-                        else if (msg_length==16'd1) next = LEN_LOC6;
-                        else if (msg_length==16'd2) next = LEN_LOC5;
+                        else if (msg_length==16'd5) next = LEN_LOC2;
+                        else if (msg_length==16'd4) next = LEN_LOC3;
+/* These state transactions not need for: min msg_length=8
                         else if (msg_length==16'd3) next = LEN_LOC4;
-                        else if (msg_length==16'd4) next = LEN_LOC3;
-                        else if (msg_length==16'd5) next = LEN_LOC2;
-                        else if (msg_length==16'd6) next = LEN_LOC1;
-                        else if (msg_length==16'd7) next = LEN_LOC0;
-                        else                        next = MID_PKT;   // dup
+                        else if (msg_length==16'd2) next = LEN_LOC5;
+                        else if (msg_length==16'd1) next = LEN_LOC6;
+                        else if (msg_length==16'd0) next = LEN_LOC7;
+                        if (in_endofpacket)         next = LAST_PKT;
+*/
+                        else                        next = MID_PKT;
                       end
-        LEN_SPLIT : if (in_valid)
-                      if (in_endofpacket)           next = LAST_PKT;
-                      else                          next = MID_PKT;
+
+        MID_PKT    :  if (in_valid) begin
+                        if      (msg_length==16'd7) next = LEN_LOC0;
+                        else if (msg_length==16'd6) next = LEN_LOC1;
+                        else if (msg_length==16'd5) next = LEN_LOC2;
+                        else if (msg_length==16'd4) next = LEN_LOC3;
+                        else if (msg_length==16'd3) next = LEN_LOC4;
+                        else if (msg_length==16'd2) next = LEN_LOC5;
+                        else if (msg_length==16'd1) next = LEN_LOC6;
+                        else if (msg_length==16'd0) next = LEN_LOC7;
+                        if (in_endofpacket)         next = LAST_PKT;
+                        else                        next = MID_PKT;
+                      end
+        LEN_SPLIT : if (in_valid) begin
+                        if      (msg_length==16'd7) next = LEN_LOC0;
+                        else if (msg_length==16'd6) next = LEN_LOC1;
+                        else if (msg_length==16'd5) next = LEN_LOC2;
+                        else if (msg_length==16'd4) next = LEN_LOC3;
+                        else if (msg_length==16'd3) next = LEN_LOC4;
+                        else if (msg_length==16'd2) next = LEN_LOC5;
+                        else if (msg_length==16'd1) next = LEN_LOC6;
+/* These state transactions not need for: min msg_length=8
+                        else if (msg_length==16'd0) next = LEN_LOC7;
+*/
+                        if (in_endofpacket)         next = LAST_PKT;
+                        else                        next = MID_PKT;
+                      end
+
         LEN_LOC0  : if (in_valid)                   next = LEN_SPLIT;
 
         LEN_LOC1  : if (in_valid)
                       if (in_endofpacket)           next = LAST_PKT;
                       else                          next = MID_PKT;
 
-        LEN_LOC2  : if (in_valid)
-                      if (in_endofpacket)           next = LAST_PKT;
+        LEN_LOC2  : if (in_valid) begin
+                      if      (msg_length==16'd7)   next = LEN_LOC0;
+/* These state transactions not needed for: min msg_length=8
+                      else if (msg_length==16'd6)   next = LEN_LOC1;
+                      else if (msg_length==16'd5)   next = LEN_LOC2;
+                      else if (msg_length==16'd4)   next = LEN_LOC3;
+                      else if (msg_length==16'd3)   next = LEN_LOC4;
+                      else if (msg_length==16'd2)   next = LEN_LOC5;
+                      else if (msg_length==16'd1)   next = LEN_LOC6;
+                      else if (msg_length==16'd0)   next = LEN_LOC7;
+*/
+                      else if (in_endofpacket)      next = LAST_PKT;
                       else                          next = MID_PKT;
+                    end
+        LEN_LOC3  : if (in_valid) begin
+                      if      (msg_length==16'd7)   next = LEN_LOC0;
+                      else if (msg_length==16'd6)   next = LEN_LOC1;
+/* These state transactions not needed for: min msg_length=8
+                      else if (msg_length==16'd5)   next = LEN_LOC2;
+                      else if (msg_length==16'd4)   next = LEN_LOC3;
+                      else if (msg_length==16'd3)   next = LEN_LOC4;
+                      else if (msg_length==16'd2)   next = LEN_LOC5;
+                      else if (msg_length==16'd1)   next = LEN_LOC6;
+                      else if (msg_length==16'd0)   next = LEN_LOC7;
+*/
+                      else if (in_endofpacket)      next = LAST_PKT;
+                      else                          next = MID_PKT;
+                    end
 
-        LEN_LOC3  : if (in_valid)
-                      if (in_endofpacket)           next = LAST_PKT;
+        LEN_LOC4  : if (in_valid) begin
+                      if      (msg_length==16'd7)   next = LEN_LOC0;
+                      else if (msg_length==16'd6)   next = LEN_LOC1;
+                      else if (msg_length==16'd5)   next = LEN_LOC2;
+/* These state transactions not needed for: min msg_length=8
+                      else if (msg_length==16'd4)   next = LEN_LOC3;
+                      else if (msg_length==16'd3)   next = LEN_LOC4;
+                      else if (msg_length==16'd2)   next = LEN_LOC5;
+                      else if (msg_length==16'd1)   next = LEN_LOC6;
+                      else if (msg_length==16'd0)   next = LEN_LOC7;
+*/
+                      else if (in_endofpacket)      next = LAST_PKT;
                       else                          next = MID_PKT;
+                    end
 
-        LEN_LOC4  : if (in_valid)
-                      if (in_endofpacket)           next = LAST_PKT;
+        LEN_LOC5  : if (in_valid) begin
+                      if      (msg_length==16'd7)   next = LEN_LOC0;
+                      else if (msg_length==16'd6)   next = LEN_LOC1;
+                      else if (msg_length==16'd5)   next = LEN_LOC2;
+                      else if (msg_length==16'd4)   next = LEN_LOC3;
+/* These state transactions not needed for: min msg_length=8
+                      else if (msg_length==16'd3)   next = LEN_LOC4;
+                      else if (msg_length==16'd2)   next = LEN_LOC5;
+                      else if (msg_length==16'd1)   next = LEN_LOC6;
+                      else if (msg_length==16'd0)   next = LEN_LOC7;
+*/
+                      else if (in_endofpacket)      next = LAST_PKT;
                       else                          next = MID_PKT;
+                    end
 
-        LEN_LOC5  : if (in_valid)
-                      if (in_endofpacket)           next = LAST_PKT;
+        LEN_LOC6  : if (in_valid) begin
+                      if      (msg_length==16'd7)   next = LEN_LOC0;
+                      else if (msg_length==16'd6)   next = LEN_LOC1;
+                      else if (msg_length==16'd5)   next = LEN_LOC2;
+                      else if (msg_length==16'd4)   next = LEN_LOC3;
+                      else if (msg_length==16'd3)   next = LEN_LOC4;
+/* These state transactions not needed for: min msg_length=8
+                      else if (msg_length==16'd2)   next = LEN_LOC5;
+                      else if (msg_length==16'd1)   next = LEN_LOC6;
+                      else if (msg_length==16'd0)   next = LEN_LOC7;
+*/
+                      else if (in_endofpacket)      next = LAST_PKT;
                       else                          next = MID_PKT;
+                    end
 
-        LEN_LOC6  : if (in_valid)
-                      if (in_endofpacket)           next = LAST_PKT;
+        LEN_LOC7  : if (in_valid) begin
+                      if      (msg_length==16'd7)   next = LEN_LOC0;
+                      else if (msg_length==16'd6)   next = LEN_LOC1;
+                      else if (msg_length==16'd5)   next = LEN_LOC2;
+                      else if (msg_length==16'd4)   next = LEN_LOC3;
+                      else if (msg_length==16'd3)   next = LEN_LOC4;
+                      else if (msg_length==16'd2)   next = LEN_LOC5;
+/* These state transactions not needed for: min msg_length=8
+                      else if (msg_length==16'd1)   next = LEN_LOC6;
+                      else if (msg_length==16'd0)   next = LEN_LOC7;
+*/
+                      else if (in_endofpacket)      next = LAST_PKT;
                       else                          next = MID_PKT;
+                    end
 
-        LEN_LOC7  : if (in_valid)
-                      if (in_endofpacket)           next = LAST_PKT;
-                      else                          next = MID_PKT;
+        LAST_PKT  :                                 next <= IDLE;
       endcase
   end
 
