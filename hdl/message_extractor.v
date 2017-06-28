@@ -72,6 +72,7 @@ module message_extractor (
                         if (in_endofpacket)         next = LAST_PKT;
                         else                        next = MID_PKT;
                       end
+
         LEN_SPLIT : if (in_valid) begin
                         if      (msg_length==16'd7) next = LEN_LOC0;
                         else if (msg_length==16'd6) next = LEN_LOC1;
@@ -107,6 +108,7 @@ module message_extractor (
                       else if (in_endofpacket)      next = LAST_PKT;
                       else                          next = MID_PKT;
                     end
+
         LEN_LOC3  : if (in_valid) begin
                       if      (msg_length==16'd7)   next = LEN_LOC0;
                       else if (msg_length==16'd6)   next = LEN_LOC1;
