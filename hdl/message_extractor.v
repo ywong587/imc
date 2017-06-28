@@ -1,402 +1,278 @@
-`timescale 1ns / 1ps
-
-//////////////////////////////////////////////////////////////////////////////////
-// Company:
-// Engineer:
-//
-// Create Date: 06/26/2017 10:03:25 AM
-// Design Name:
-// Module Name: message_extractor
-// Project Name:
-// Target Devices:
-// Tool Versions:
-// Description:
-//
-// Dependencies:
-//
-// Revision:
-// Revision 0.01 - File Created
-// Additional Comments:
-//
-//////////////////////////////////////////////////////////////////////////////////
-
 module message_extractor (
-      input   clk,
-      input   ce,
-      input   reset_n,
+      input   clk, reset_n, in_valid, in_startofpacket, in_endofpacket, in_error,
       input   [63:0]  in_data,
-      input   in_valid,
-      input   in_startofpacket,
-      input   in_endofpacket,
       input   [2:0]   in_empty,
-      input   in_error,
-      output  reg in_ready,
-      output  reg out_valid,
+      output  reg in_ready, out_valid,
       output  reg [255:0] out_data,
       output  reg [31:0]  out_bytemask
       );
 
-      reg     [3:0]   state,next;
-      reg     [15:0]  msg_count;
-      reg     [15:0]  msg_length;
+      reg     [3:0]   state, next;
+      reg     [15:0]  msg_count, msg_length;
+      reg     [63:0]  payload0, payload1;
+      reg     [3:0]   payload0_sz, payload1_sz;
+      reg     [7:0]   payload0_mask, payload1_mask;
+      reg     [2:0]   payload_mask;
 
-      reg     [63:0]  pl0;
-      reg     [3:0]   pl0_size;
-      reg     [63:0]  pl1;
-      reg     [3:0]   pl1_size;
+      parameter IDLE        = 4'b0000,
+                FIRST_PKT   = 4'b0001,
+                MID_PKT     = 4'b0010,
+                LEN_SPLIT   = 4'b0011,
+                LEN_LOC0    = 4'b0100,
+                LEN_LOC1    = 4'b0101,
+                LEN_LOC2    = 4'b0110,
+                LEN_LOC3    = 4'b0111,
+                LEN_LOC4    = 4'b1000,
+                LEN_LOC5    = 4'b1001,
+                LEN_LOC6    = 4'b1010,
+                LEN_LOC7    = 4'b1011,
+                LAST_PKT    = 4'b1100;
 
-      integer   i;
+      parameter LEN1        = 4'd1,
+                LEN2        = 4'd2,
+                LEN3        = 4'd3,
+                LEN4        = 4'd4,
+                LEN5        = 4'd5,
+                LEN6        = 4'd6,
+                LEN7        = 4'd7,
+                LEN8        = 4'd8;
 
-      parameter IDLE        = 0,
-                FIRST_PKT   = 1,
-                MIDDLE_PKT  = 2,
-                LEN_LOC0    = 3,
-                LEN_LOC1    = 4,
-                LEN_LOC2    = 5,
-                LEN_LOC3    = 6,
-                LEN_LOC4    = 7,
-                LEN_LOC5    = 8,
-                LEN_LOC6    = 9,
-                LEN_LOC7    = 10,
-                LAST_PKT    = 11;
-  
- 
-  always @ (negedge clk or negedge reset_n) begin
-      if (!reset_n) begin
-        state         <= IDLE;
-        out_valid     <= 1'b0;
-        in_ready      <= 1'b1;
-        out_data      <= 256'd0;
-        out_bytemask  <= 32'd0;
+  always @ (negedge clk or negedge reset_n)
+    if (!reset_n)   state <= IDLE;
+    else            state <= next;
 
-        msg_count     <= 16'd0;
-        msg_length    <= 16'd0;
-      end
-  // assumptions:
-  // 1) MSG Count always at byte 7 and byte 8 of the first packet of a input data stream.
-  // 2) "in_empty" only assert at the last packet of the data stream
-  // 3) minimum message length is 8 bytes, so the first packet of the data stream payload
-  //   is always 4 bytes.
+  always @ (state or in_startofpacket or in_endofpacket) begin
+    next =4'bx;
+      case(state)
+        IDLE       :  if (in_valid & in_startofpacket)  next <= FIRST_PKT;
 
-  else begin
-    case (state)
-      IDLE:
-        if (in_valid & in_startofpacket) begin
-          state <= FIRST_PKT;
-          msg_count   <= in_data[63:48] - 16'd1;
-          msg_length  <= in_data[47:32] - 16'd4;
-          out_data    <= in_data[31:0];
-          out_bytemask<= {4{1'b1}};
-          in_ready    <= 1'b0;
-        end
+        FIRST_PKT  :  if (in_valid) begin
+                        if (in_endofpacket)         next = LAST_PKT;	// ?
+                        else if (msg_length==16'd0) next = LEN_LOC7;	// ?
+                        else if (msg_length==16'd1) next = LEN_LOC6;	// ?
+                        else if (msg_length==16'd2) next = LEN_LOC5;	// ?	
+                        else if (msg_length==16'd3) next = LEN_LOC4;	// ? min msg_length is 8
+                        else if (msg_length==16'd4) next = LEN_LOC3;
+                        else if (msg_length==16'd5) next = LEN_LOC2;
+                        else if (msg_length==16'd6) next = LEN_LOC1;
+                        else if (msg_length==16'd7) next = LEN_LOC0;
+                        else                        next = MID_PKT;   // dup
+                      end
+                      
+        MID_PKT    :  if (in_valid) begin
+                        if (in_endofpacket)         next = LAST_PKT;
+                        else if (msg_length==16'd0) next = LEN_LOC7;
+                        else if (msg_length==16'd1) next = LEN_LOC6;
+                        else if (msg_length==16'd2) next = LEN_LOC5;
+                        else if (msg_length==16'd3) next = LEN_LOC4;
+                        else if (msg_length==16'd4) next = LEN_LOC3;
+                        else if (msg_length==16'd5) next = LEN_LOC2;
+                        else if (msg_length==16'd6) next = LEN_LOC1;
+                        else if (msg_length==16'd7) next = LEN_LOC0;
+                        else                        next = MID_PKT;   // dup
+                      end
+        LEN_SPLIT : if (in_valid)
+                      if (in_endofpacket)           next = LAST_PKT;
+                      else                          next = MID_PKT;
+        LEN_LOC0  : if (in_valid)                   next = LEN_SPLIT;
 
-      FIRST_PKT:
-          if (in_valid) begin
-            if (msg_length == 16'd0) begin
-            // This case should never happen assuming MSG Length >= 8 bytes.
-              if ((msg_count == 16'd0) & in_endofpacket) begin
-                in_ready <= 1'b1;
-                state <= IDLE;
-              end
-              else begin
-                msg_count   <= msg_count - 16'd1;
-                msg_length  <= in_data[63:48] - 16'd6;
-                pl0         <= in_data[47:0] - 16'd16;
-                pl0_size    <= 4'd8;
-                state <= MIDDLE_PKT;
-              end
-            end
-            else if (msg_length == 16'd1) begin
-              // assume The first byte following the "Message Length"
-              // is the most significant byte of the payload data.
-              if (pl0_size != 4'd0) begin
-                // out_data <= {out_data, pl0, in_data[63:56]};
-                out_data <= (out_data<<(pl0_size*8+8) | (pl0<<8) | in_data[63:56]);
-                out_bytemask  <= {out_bytemask, pl0_size, 1'b1};
-              end
-              else begin
-                out_data      <= {out_data, in_data[63:56]};
-                out_bytemask  <= {out_bytemask, 1'b1};
-              end
+        LEN_LOC1  : if (in_valid)
+                      if (in_endofpacket)           next = LAST_PKT;
+                      else                          next = MID_PKT;
 
-              out_valid     <= 1'b1;
+        LEN_LOC2  : if (in_valid)
+                      if (in_endofpacket)           next = LAST_PKT;
+                      else                          next = MID_PKT;
 
-              msg_count     <= msg_count - 16'd1;
-              msg_length    <= in_data[55:40] - 16'd1;
-              pl0           <= in_data[39:0];
-              pl0_size      <= 4'd5;
-              state <= MIDDLE_PKT;
-            end
-            else if (msg_length == 16'd2) begin
-              if (pl0_size != 4'd0) begin
-                out_data      <= {out_data, pl0, in_data[63:48]};
-//                out_bytemask  <= {out_bytemask, pl0_size, 2{1'b1}};
-              end
-              else begin
-                out_data      <= {out_data,in_data[63:48]};
-                out_bytemask  <= {out_bytemask,{2{1'b1}}};
-              end
-              out_valid     <= 1'b1;
+        LEN_LOC3  : if (in_valid)
+                      if (in_endofpacket)           next = LAST_PKT;
+                      else                          next = MID_PKT;
 
-              msg_count     <= msg_count - 16'd1;
-              msg_length    <= in_data[47:32] - 16'd1;
-              pl0           <= in_data[31:0];
-              pl0_size      <= 4'd4;
-            end
-            else if (msg_length == 16'd3) begin
-              if (pl0_size != 4'd0) begin
-                out_data      <= {out_data,in_data[63:40]};
-                out_bytemask  <= {out_bytemask,{3{1'b1}}};
-              end
-              else begin
-                out_data      <= {out_data,in_data[63:40]};
-                out_bytemask  <= {out_bytemask,{3{1'b1}}};
-              end
+        LEN_LOC4  : if (in_valid)
+                      if (in_endofpacket)           next = LAST_PKT;
+                      else                          next = MID_PKT;
 
-              out_valid     <= 1'b1;
-              msg_count     <= msg_count - 16'd1;
-              msg_length    <= in_data[39:24] - 16'd1;
-              pl0           <= in_data[23:0];
-              pl0_size      <= 4'd3;
-            end
-            else if (msg_length == 16'd4) begin
-              out_data      <= {out_data,in_data[63:32]};
-              out_bytemask  <= {out_bytemask,{4{1'b1}}};
-              out_valid     <= 1'b1;
-              msg_count     <= msg_count - 16'd1;
-              msg_length    <= in_data[31:16] - 16'd1;
-              pl0           <= in_data[15:0];
-              pl0_size      <= 4'd2;
-            end
-            else if (msg_length == 16'd5) begin
-              out_data      <= {out_data,in_data[63:24]};
-              out_bytemask  <= {out_bytemask,{5{1'b1}}};
-              out_valid     <= 1'b1;
-              msg_count     <= msg_count - 16'd1;
-              msg_length    <= in_data[23:8] - 16'd1;
-              pl0           <= in_data[7:0];
-              pl0_size      <= 4'd1;
-            end
-            else if (msg_length == 16'd6) begin
-              out_data      <= {out_data,in_data[63:16]};
-              out_bytemask  <= {out_bytemask,{6{1'b1}}};
-              out_valid     <= 1'b1;
-              msg_count     <= msg_count - 16'd1;
-              msg_length    <= in_data[15:0] - 16'd1;
-              pl0           <= 64'd0;
-              pl0_size      <= 4'd0;
-              state <= LEN_PKT_B10;
-            end
-            else if (msg_length == 16'd7) begin
-              out_data      <= {out_data,in_data[63:8]};
-              out_bytemask  <= {out_bytemask,{7{1'b1}}};
-              out_valid     <= 1'b1;
-              msg_count     <= msg_count - 16'd1;
-              msg_length    <= in_data[7:0];
-              pl0           <= 64'd0;
-              pl0_size      <= 4'd0;
-              state <= LEN_PKT_B17;
-            end
-            else if (msg_length == 16'd8) begin
-              out_data      <= {out_data,in_data[63:0]};
-              out_bytemask  <= {out_bytemask,{8{1'b1}}};
-              out_valid     <= 1'b1;
+        LEN_LOC5  : if (in_valid)
+                      if (in_endofpacket)           next = LAST_PKT;
+                      else                          next = MID_PKT;
 
-              if ((msg_count == 16'd0) & in_endofpacket) begin
-                in_ready <= 1'b1;
-                state <= IDLE;
-              end
-              else begin
-                msg_count   <= msg_count - 16'd1;
-                msg_length  <= msg_length - 16'd8;
-                pl0         <= 64'd0;
-                pl0_size    <= 4'd0;
-                state <= LEN_PKT_B76;
-              end
-            end
-            else begin  // (msg_length > 16'd8)
-              out_data      <= {out_data,in_data[63:0]};
-              out_bytemask  <= {out_bytemask,{8{1'b1}}};
-              state <= MIDDLE_PKT;
-            end
-          end
+        LEN_LOC6  : if (in_valid)
+                      if (in_endofpacket)           next = LAST_PKT;
+                      else                          next = MID_PKT;
 
+        LEN_LOC7  : if (in_valid)
+                      if (in_endofpacket)           next = LAST_PKT;
+                      else                          next = MID_PKT;
+      endcase
+  end
 
+  always @ (negedge clk or negedge reset_n)
+    if (!reset_n) begin
+      in_ready      <= 1'd1;
+      out_valid     <= 1'd0;
+      out_data      <= 256'd0;
+      out_bytemask  <= 32'd0;
+      msg_count     <= 16'd0;
+      msg_length    <= 16'd0;
+      payload0      <= 64'd0;
+      payload0_sz   <= 4'd0;
+      payload1      <= 64'd0;
+      payload1_sz   <= 4'd0;
+    end
+    else begin
+      in_ready      <= 1'd1;
+      out_valid     <= 1'd0;
+      out_data      <= 256'd0;
+      out_bytemask  <= 32'd0;
+      msg_count     <= 16'd0;
+      msg_length    <= 16'd0;
+      payload0      <= 64'd0;
+      payload0_sz   <= 4'd0;
+      payload1      <= 64'd0;
+      payload1_sz   <= 4'd0;
 
+      case (next)
+        IDLE        : begin
+                        in_ready      <= 1'b1;
+                        out_valid     <= 1'b0;
+                        // out_data   <= 256'b0;        // dup
+                        out_bytemask  <= 32'b0;
+                        msg_count     <= 16'd0;
+                        msg_length    <= 16'd0;
+                      end
 
-      MIDDLE_PKT:
-          if (in_valid) begin
-            if (msg_length == 16'd0) begin
-              if (msg_count == 16'd0) begin
-                state <= IDLE;
-                in_ready <= 1'b1;
-              end
-              else begin
-                msg_count   <= msg_count - 16'd1;
-                msg_length  <= in_data[63:48] - 16'd1;
-                out_data    <= in_data[47:0]; // New out_data
-                out_bytemask<= {6{1'b1}};     // New out_bytemask
-              end
-            end
-            else if (msg_length == 16'd1) begin
-              // assume The first byte following the "Message Length"
-              // is the most significant byte of the payload data.
-              out_data      <= {out_data,in_data[63:56]};
-              out_bytemask  <= {out_bytemask,1'b1};
-              out_valid     <= 1'b1;
-              msg_count     <= msg_count - 16'd1;
-              msg_length    <= in_data[55:40] - 16'd1;
-              pl0           <= in_data[39:0];
-              pl0_size      <= 4'd1;
-            end
-            else if (msg_length == 16'd2) begin
-              out_data      <= {out_data,in_data[63:48]};
-              out_bytemask  <= {out_bytemask,{2{1'b1}}};
-              out_valid     <= 1'b1;
-              msg_count     <= msg_count - 16'd1;
-              msg_length    <= in_data[47:32] - 16'd1;
-              pl0           <= in_data[31:0];
-              pl0_size      <= 4'd2;
-            end
-            else if (msg_length == 16'd3) begin
-              out_data      <= {out_data,in_data[63:40]};
-              out_bytemask  <= {out_bytemask,{3{1'b1}}};
-              out_valid     <= 1'b1;
-              msg_count     <= msg_count - 16'd1;
-              msg_length    <= in_data[39:24] - 16'd1;
-              pl0           <= in_data[23:0];
-              pl0_size      <= 4'd3;
-            end
-            else if (msg_length == 16'd4) begin
-              out_data      <= {out_data,in_data[63:32]};
-              out_bytemask  <= {out_bytemask,{4{1'b1}}};
-              out_valid     <= 1'b1;
-              msg_count     <= msg_count - 16'd1;
-              msg_length    <= in_data[31:16] - 16'd1;
-              pl0           <= in_data[15:0];
-              pl0_size      <= 4'd4;
-            end
-            else if (msg_length == 16'd5) begin
-              out_data      <= {out_data,in_data[63:24]};
-              out_bytemask  <= {out_bytemask,{5{1'b1}}};
-              out_valid     <= 1'b1;
-              msg_count     <= msg_count - 16'd1;
-              msg_length    <= in_data[23:8] - 16'd1;
-              pl0           <= in_data[7:0];
-              pl0_size      <= 4'd5;
-            end
-            else if (msg_length == 16'd6) begin
-              out_data      <= {out_data,in_data[63:16]};
-              out_bytemask  <= {out_bytemask,{6{1'b1}}};
-              out_valid     <= 1'b1;
-              msg_count     <= msg_count - 16'd1;
-              msg_length    <= in_data[15:0] - 16'd1;
-              pl0           <= 64'd0;
-              pl0_size      <= 4'd0;
-            end
-            else if (msg_length == 16'd7) begin
-              out_data      <= {out_data,in_data[63:8]};
-              out_bytemask  <= {out_bytemask,{7{1'b1}}};
-              out_valid     <= 1'b1;
-              msg_count     <= msg_count - 16'd1;
-              msg_length    <= in_data[7:0];
-              pl0           <= 64'd0;
-              pl0_size      <= 4'd0;
-            end
-            else begin  // (msg_length > 16'd7)
-            end
-          end
+        FIRST_PKT   : begin
+                        in_ready      <= 1'b0;          // dup
+                        out_valid     <= 1'b0;          // dup
+                        out_data      <= in_data[31:0];
+                        out_bytemask  <= 32'b1111;
+                        msg_count     <= in_data[63:48]-16'd1;
+                        msg_length    <= in_data[47:32]-16'd4;
+                      end
 
-      LEN_PKT_B17:
-          if (in_valid) begin
-            if (msg_length == 16'd0) begin
-              if (msg_count == 16'd0) begin
-                state <= IDLE;
-                in_ready <= 1'b1;
-              end
-              else begin
-                msg_count   <= msg_count - 16'd1;
-                msg_length  <= in_data[63:48] - 16'd1;
-                out_data    <= in_data[47:0]; // New out_data
-                out_bytemask<= {6{1'b1}};     // New out_bytemask
-              end
-            end
-            else if (msg_length == 16'd1) begin
-              // assume The first byte following the "Message Length"
-              // is the most significant byte of the payload data.
-              out_data      <= {out_data,in_data[63:56]};
-              out_bytemask  <= {out_bytemask,1'b1};
-              out_valid     <= 1'b1;
-              msg_count     <= msg_count - 16'd1;
-              msg_length    <= in_data[55:40] - 16'd1;
-              pl0           <= in_data[39:0];
-              pl0_size      <= 4'd1;
-            end
-            else if (msg_length == 16'd2) begin
-              out_data      <= {out_data,in_data[63:48]};
-              out_bytemask  <= {out_bytemask,{2{1'b1}}};
-              out_valid     <= 1'b1;
-              msg_count     <= msg_count - 16'd1;
-              msg_length    <= in_data[47:32] - 16'd1;
-              pl0           <= in_data[31:0];
-              pl0_size      <= 4'd2;
-            end
-            else if (msg_length == 16'd3) begin
-              out_data      <= {out_data,in_data[63:40]};
-              out_bytemask  <= {out_bytemask,{3{1'b1}}};
-              out_valid     <= 1'b1;
-              msg_count     <= msg_count - 16'd1;
-              msg_length    <= in_data[39:24] - 16'd1;
-              pl0           <= in_data[23:0];
-              pl0_size      <= 4'd3;
-            end
-            else if (msg_length == 16'd4) begin
-              out_data      <= {out_data,in_data[63:32]};
-              out_bytemask  <= {out_bytemask,{4{1'b1}}};
-              out_valid     <= 1'b1;
-              msg_count     <= msg_count - 16'd1;
-              msg_length    <= in_data[31:16] - 16'd1;
-              pl0           <= in_data[15:0];
-              pl0_size      <= 4'd4;
-            end
-            else if (msg_length == 16'd5) begin
-              out_data      <= {out_data,in_data[63:24]};
-              out_bytemask  <= {out_bytemask,{5{1'b1}}};
-              out_valid     <= 1'b1;
-              msg_count     <= msg_count - 16'd1;
-              msg_length    <= in_data[23:8] - 16'd1;
-              pl0           <= in_data[7:0];
-              pl0_size      <= 4'd5;
-            end
-            else if (msg_length == 16'd6) begin
-              out_data      <= {out_data,in_data[63:16]};
-              out_bytemask  <= {out_bytemask,{6{1'b1}}};
-              out_valid     <= 1'b1;
-              msg_count     <= msg_count - 16'd1;
-              msg_length    <= in_data[15:0] - 16'd1;
-              pl0           <= 64'd0;
-              pl0_size      <= 4'd0;
-            end
-            else if (msg_length == 16'd7) begin
-              out_data      <= {out_data,in_data[63:8]};
-              out_bytemask  <= {out_bytemask,{7{1'b1}}};
-              out_valid     <= 1'b1;
-              msg_count     <= msg_count - 16'd1;
-// LEN Upper byte:
-              msg_length    <= in_data[7:0];
+        MID_PKT     : begin
+                        if (payload0_sz > 0) begin
+                          out_data      <=  (out_data<<((payload0_sz+16'd8)<<3))|
+                                            (payload0<<64)                      |
+                                            in_data[63:0];
+                          out_bytemask  <=  (out_bytemask<<(payload0_sz+4'd8))  |
+                                            (payload0_mask<<8)                  |
+                                            payload_mask;
+                        end
+                        else begin
+                          out_data      <= {out_data,in_data[63:0]};
+                          out_bytemask  <= {out_bytemask,payload_mask};
+                        end
+                        msg_length      <= msg_length - 16'd8;
+                      end
 
-              pl0           <= 64'd0;
-              pl0_size      <= 4'd0;
-            end
-            else begin  // (msg_length > 16'd7)
-            end
-          end
-      LAST_PKT:
-      begin
-          if (in_valid) begin
-            state <= IDLE;
-          end
-      end
+        LEN_SPLIT   : begin
+                        msg_length        <= {msg_length,in_data[63:56]} - 16'd7;
+                        out_data          <= {256'b0 | in_data[55:0]};
+                        out_bytemask      <= {32'b0 | 32'b1111111};
+                        payload0_sz       <= 4'd0;
+                      end
+
+        LEN_LOC0    : begin
+                        msg_length        <= in_data[7:0];
+                        out_data          <= {out_data,in_data[63:8]};
+                        out_bytemask      <= {out_bytemask, {7{1'b1}}};
+                        out_valid         <= 1'b1;
+                        payload0_sz       <= 4'd0;
+                        payload0          <= 64'd0;
+                        payload0_mask     <= 8'b00000000;
+                      end
+
+        LEN_LOC1    : begin
+                        msg_length        <= in_data[15:0];
+                        out_data          <= {out_data,in_data[63:16]};
+                        out_bytemask      <= {out_bytemask, {6{1'b1}}};
+                        out_valid         <= 1'b1;
+                        payload0_sz       <= 4'd0;
+                        payload0          <= 64'd0;
+                        payload0_mask     <= 8'b00000000;
+                      end
+
+        LEN_LOC2    : begin
+                        msg_length        <= in_data[23:8]-16'd1;
+                        out_data          <= {out_data,in_data[63:24]};
+                        out_bytemask      <= {out_bytemask, {5{1'b1}}};
+                        out_valid         <= 1'b1;
+                        payload0_sz       <= 4'd1;
+                        payload0          <= in_data[7:0];
+                        payload0_mask     <= 8'b00000001;
+                      end
+
+        LEN_LOC3    : begin
+                        msg_length        <= in_data[31:16]-16'd2;
+                        out_data          <= {out_data,in_data[63:32]};
+                        out_bytemask      <= {out_bytemask, {4{1'b1}}};
+                        out_valid         <= 1'b1;
+                        payload0_sz       <= 4'd2;
+                        payload0          <= in_data[15:0];
+                        payload0_mask     <= 8'b00000011;
+                      end
+
+        LEN_LOC4    : begin
+                        msg_length        <= in_data[39:24]-16'd3;
+                        out_data          <= {out_data,in_data[63:40]};
+                        out_bytemask      <= {out_bytemask, {3{1'b1}}};
+                        out_valid         <= 1'b1;
+                        payload0_sz       <= 4'd3;
+                        payload0          <= in_data[23:0];
+                        payload0_mask     <= 8'b00000111;
+                      end
+
+        LEN_LOC5    : begin
+                        msg_length        <= in_data[47:32]-16'd4;
+                        out_data          <= {out_data,in_data[63:40]};
+                        out_bytemask      <= {out_bytemask, {2{1'b1}}};
+                        out_valid         <= 1'b1;
+                        payload0_sz       <= 4'd4;
+                        payload0          <= in_data[31:0];
+                        payload0_mask     <= 8'b00001111;
+                      end
+
+        LEN_LOC6    : begin
+                        msg_length        <= in_data[55:40]-16'd5;
+                        out_data          <= {out_data,in_data[63:56]};
+                        out_bytemask      <= {out_bytemask, 1'b1};
+                        out_valid         <= 1'b1;
+                        payload0_sz       <= 4'd5;
+                        payload0          <= in_data[39:0];
+                        payload0_mask     <= 8'b00011111;
+                      end
+
+        LEN_LOC7    : begin
+                        msg_length        <= in_data[63:48]-16'd6;
+                        out_data          <= out_data;
+                        out_bytemask      <= out_bytemask;
+                        out_valid         <= 1'b1;
+                        payload0_sz       <= 4'd6;
+                        payload0          <= in_data[47:0];
+                        payload0_mask     <= 8'b00111111;
+                      end
+        LAST_PKT    : begin
+                        msg_length        <= msg_length - (16'd8-in_empty);         // dup
+                        out_data          <= out_data | (in_data >> (in_empty<<6));
+                        out_bytemask      <= {out_bytemask, 1'b1};
+                        out_valid         <= 1'b1;
+                      end
+      endcase
+    end
+
+  always @ (msg_length or in_valid) begin
+    case(msg_length)
+      LEN1:   if(in_valid)  payload_mask = 8'b00000001;
+      LEN2:   if(in_valid)  payload_mask = 8'b00000011;
+      LEN3:   if(in_valid)  payload_mask = 8'b00000111;
+      LEN4:   if(in_valid)  payload_mask = 8'b00001111;
+      LEN5:   if(in_valid)  payload_mask = 8'b00011111;
+      LEN6:   if(in_valid)  payload_mask = 8'b00111111;
+      LEN7:   if(in_valid)  payload_mask = 8'b01111111;
+//    LEN8:   if(in_valid)  payload_mask = 8'b11111111;     // dup
+      default:if(in_valid)  payload_mask = 8'b11111111;
     endcase
   end
+
 endmodule
