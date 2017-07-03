@@ -56,24 +56,24 @@ initial begin
   @(posedge clk); {in_data,in_startofpacket,in_endofpacket,in_valid,in_empty,in_error}<={64'h3131313131313100,1'b0,1'b0,1'b1,3'bX,1'b0};
   @(posedge clk); {in_data,in_startofpacket,in_endofpacket,in_valid,in_empty,in_error}<={64'h095a5a5a5a5a5a5a,1'b0,1'b0,1'b1,3'bX,1'b0};
   @(posedge clk); {in_data,in_startofpacket,in_endofpacket,in_valid,in_empty,in_error}<={64'h5a5a000000000000,1'b0,1'b1,1'b1,3'd6,1'b0};
-	@(posedge clk);
+  @(posedge clk);
 end
 
 initial begin
-  @(posedge reset_n); $display("========================================================================================================" );
-                      $display("          output pakets                                |      out_bytemask " );
-                      $display("========================================================================================================" );
+  @(posedge reset_n); $display("===============================================================================================================" );
+                      $display("          out_data (hex)                                          |      out_bytemask (binary)      | out_valid" );
+                      $display("===============================================================================================================" );
 
 end
 always @(posedge clk)
 begin
     if (out_valid)
-//        $display("output pakets = %h, out_bytemask =%b "  , out_data, out_bytemask );
-        $display("%h | %b"  ,out_data, out_bytemask );
+//        $display("output pakets = %h, out_bytemask = %b out_valid = %b"  , out_data, out_bytemask, out_valid );
+        $display("%h | %b | %b"  ,out_data, out_bytemask, out_valid );
 
 end
 
-initial 
+initial
 # 200 $finish;
 
 endmodule
