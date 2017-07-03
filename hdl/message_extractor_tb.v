@@ -1,4 +1,4 @@
-`timescale 1ns / 1ps
+`timescale 1ns / 100ps
 
 module message_extractor_tb;
 
@@ -15,7 +15,7 @@ module message_extractor_tb;
   wire [255:0]  out_data;
   wire [31:0]   out_bytemask;
 
-  initial #1000 reset_n = 1;
+  initial #10 reset_n = 1;
 
   always begin
      clk = 1'b0;
@@ -23,7 +23,7 @@ module message_extractor_tb;
      #(10/2);
   end
 
-  message_extractor dut (
+  msg_extractor_top dut (
         .clk(clk),
         .reset_n(reset_n),
         .in_valid(in_valid),
@@ -32,7 +32,6 @@ module message_extractor_tb;
         .in_error(in_error),
         .in_data(in_data),
         .in_empty(in_empty),
-
         .in_ready(in_ready),
         .out_valid(out_valid),
         .out_data(out_data),
@@ -40,10 +39,7 @@ module message_extractor_tb;
       );
 
 initial begin
-  @(negedge reset_n);
-  @(posedge clk);
-  @(posedge clk);
-  @(posedge clk);
+  @(posedge reset_n);
   @(posedge clk);
   @(posedge clk); {in_data,in_startofpacket,in_endofpacket,in_valid,in_empty,in_error}<={64'h0008000862626262,1'b1,1'b0,1'b1,3'bX,1'b0};
   @(posedge clk); {in_data,in_startofpacket,in_endofpacket,in_valid,in_empty,in_error}<={64'h62626262000c6868,1'b0,1'b0,1'b1,3'bX,1'b0};
@@ -61,5 +57,11 @@ initial begin
   @(posedge clk); {in_data,in_startofpacket,in_endofpacket,in_valid,in_empty,in_error}<={64'h095a5a5a5a5a5a5a,1'b0,1'b0,1'b1,3'bX,1'b0};
   @(posedge clk); {in_data,in_startofpacket,in_endofpacket,in_valid,in_empty,in_error}<={64'h5a5a000000000000,1'b0,1'b1,1'b1,3'd6,1'b0};
 end
+
+always @(posedge clk)
+begin
+    if (out_valid)
+        $display("output pakets = %h, packet_size =%d "  , out_data, "./dut/payload_sz" );     
+end    
 
 endmodule
