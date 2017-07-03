@@ -52,7 +52,7 @@ module msg_extractor_fsm (
   end
 
 // outputs updating block:
-always @(state or vout or payload or payload_mask or msg_count)
+  always @(state or vout or payload or payload_mask or msg_count)
   begin
     if (msg_count==16'd0) in_ready = 1'b1;
     else                  in_ready = 1'b0;
@@ -63,13 +63,8 @@ always @(state or vout or payload or payload_mask or msg_count)
   end
 
 // nextstate and nx_<variable> updating block:
-// always @(state or in_valid or in_startofpacket or in_endofpacket or in_error or in_data)
-   always @(in_data or state or 
-   					in_valid or in_error or 
-   					in_startofpacket or in_endofpacket or 
-   					msg_length or msg_count or 
-   					payload or payload0 or payload_mask or payload0_mask)
-  
+  always @(in_data or in_valid or in_error or in_startofpacket or in_endofpacket or
+            state or msg_length or msg_count or payload or payload0 or payload_mask or payload0_mask)
   begin
     nextstate       = IDLE;
     nx_msg_count    = 16'd0;
