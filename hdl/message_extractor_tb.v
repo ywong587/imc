@@ -61,7 +61,7 @@ end
 always @(posedge clk)
 begin
     if (out_valid)
-        $display("output pakets = %h, packet_size =%d "  , out_data, "./dut/payload_sz" );     
+        $display("output pakets = %h, out_bytemask =%b "  , out_data, out_bytemask );     
 end    
 
 endmodule
