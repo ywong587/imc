@@ -23,7 +23,7 @@ module message_extractor_tb;
      #(10/2);
   end
 
-  msg_extractor_top dut (
+    msg_extractor_fsm message_extractor_u1 (
         .clk(clk),
         .reset_n(reset_n),
         .in_valid(in_valid),
@@ -36,7 +36,7 @@ module message_extractor_tb;
         .out_valid(out_valid),
         .out_data(out_data),
         .out_bytemask(out_bytemask)
-      );
+  );
 
 initial begin
   @(posedge reset_n);
@@ -58,10 +58,18 @@ initial begin
   @(posedge clk); {in_data,in_startofpacket,in_endofpacket,in_valid,in_empty,in_error}<={64'h5a5a000000000000,1'b0,1'b1,1'b1,3'd6,1'b0};
 end
 
+initial begin
+  @(posedge reset_n); $display("========================================================================================================" );
+                      $display("          output pakets                                |      out_bytemask " );
+                      $display("========================================================================================================" );
+
+end
 always @(posedge clk)
 begin
     if (out_valid)
-        $display("output pakets = %h, out_bytemask =%b "  , out_data, out_bytemask );     
-end    
+//        $display("output pakets = %h, out_bytemask =%b "  , out_data, out_bytemask );
+        $display("%h | %b"  ,out_data, out_bytemask );
+
+end
 
 endmodule
