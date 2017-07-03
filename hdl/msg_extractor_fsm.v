@@ -92,9 +92,9 @@ module msg_extractor_fsm (
               if (msg_length == 16'd0)
               begin
                 if (msg_count > 0)
-                  nextstate   = FULL_PKT;
-                else
                   nextstate   = PARTIAL_PKT;
+                else
+                  nextstate   = LAST_PKT;
                 nx_msg_count  = msg_count - 16'd1;
                 nx_msg_length = in_data[63:48] - 16'd6;
                 nx_payload    = 256'd0;
@@ -105,10 +105,10 @@ module msg_extractor_fsm (
               end
               else if (msg_length == 16'd1)
               begin
-                if (msg_count == 0)
-                  nextstate   = LAST_PKT;
-                else
+                if (msg_count > 0)
                   nextstate   = PARTIAL_PKT;
+                else
+                  nextstate   = LAST_PKT;
                 nx_msg_count  = msg_count - 16'd1;
                 nx_msg_length = in_data[55:40] - 16'd5;
                 nx_payload    = {payload0,in_data[63:56]};
@@ -119,10 +119,10 @@ module msg_extractor_fsm (
               end
               else if (msg_length == 16'd2)
               begin
-                if (msg_count == 0)
-                  nextstate   = LAST_PKT;
-                else
+                if (msg_count > 0)
                   nextstate   = PARTIAL_PKT;
+                else
+                  nextstate   = LAST_PKT;
                 nx_msg_count  = msg_count - 16'd1;
                 nx_msg_length = in_data[47:32] - 16'd4;
                 nx_payload    = {payload0 , in_data[63:48]};
@@ -133,10 +133,10 @@ module msg_extractor_fsm (
               end
               else if (msg_length == 16'd3)
               begin
-                if (msg_count == 0)
-                  nextstate   = LAST_PKT;
-                else
+                if (msg_count > 0)
                   nextstate   = PARTIAL_PKT;
+                else
+                  nextstate   = LAST_PKT;
                 nx_msg_count  = msg_count - 16'd1;
                 nx_msg_length = in_data[39:24] - 16'd3;
                 nx_payload    = {payload0 , in_data[63:40]};
@@ -147,10 +147,10 @@ module msg_extractor_fsm (
               end
               else if (msg_length == 16'd4)
               begin
-                if (msg_count == 0)
-                  nextstate   = LAST_PKT;
-                else
+                if (msg_count > 0)
                   nextstate   = PARTIAL_PKT;
+                else
+                  nextstate   = LAST_PKT;
                 nx_msg_count  = msg_count - 16'd1;
                 nx_msg_length = in_data[31:16] - 16'd2;
                 nx_payload    = {payload0 , in_data[63:32]};
@@ -161,10 +161,10 @@ module msg_extractor_fsm (
               end
               else if (msg_length == 16'd5)
               begin
-                if (msg_count == 0)
-                  nextstate   = LAST_PKT;
-                else
+                if (msg_count > 0)
                   nextstate   = PARTIAL_PKT;
+                else
+                  nextstate   = LAST_PKT;
                 nx_msg_count  = msg_count - 16'd1;
                 nx_msg_length = in_data[23:8] - 16'd1;
                 nx_payload    = {payload0 , in_data[63:24]};
@@ -175,10 +175,10 @@ module msg_extractor_fsm (
               end
               else if (msg_length == 16'd6)
               begin
-                if (msg_count == 0)
-                  nextstate   = LAST_PKT;
-                else
+                if (msg_count > 0)
                   nextstate   = PARTIAL_PKT;
+                else
+                  nextstate   = LAST_PKT;
                 nx_msg_count  = msg_count - 16'd1;
                 nx_msg_length = in_data[15:0];
                 nx_payload    = {payload0 , in_data[63:16]};
@@ -229,10 +229,10 @@ module msg_extractor_fsm (
             begin
               if (msg_length == 16'd0)
               begin
-                if (msg_count == 0)
-                  nextstate   = LAST_PKT;
-                else
+                if (msg_count > 0)
                   nextstate   = PARTIAL_PKT;
+                else
+                  nextstate   = LAST_PKT;
                 nx_msg_count  = msg_count - 16'd1;
                 nx_msg_length = in_data[63:48] - 16'd6;
                 nx_payload    = 256'd0;
@@ -243,10 +243,10 @@ module msg_extractor_fsm (
               end
               else if (msg_length == 16'd1)
               begin
-                if (msg_count == 0)
-                  nextstate   = LAST_PKT;
-                else
+                if (msg_count > 0)
                   nextstate   = PARTIAL_PKT;
+                else
+                  nextstate   = LAST_PKT;
                 nx_msg_count  = msg_count - 16'd1;
                 nx_msg_length = in_data[55:40] - 16'd5;
                 nx_payload    = {payload0,in_data[63:56]};
@@ -257,10 +257,10 @@ module msg_extractor_fsm (
               end
               else if (msg_length == 16'd2)
               begin
-                if (msg_count == 0)
-                  nextstate   = LAST_PKT;
-                else
+                if (msg_count > 0)
                   nextstate   = PARTIAL_PKT;
+                else
+                  nextstate   = LAST_PKT;
                 nx_msg_count  = msg_count - 16'd1;
                 nx_msg_length = in_data[47:32] - 16'd4;
                 nx_payload    = {payload, in_data[63:48]};
@@ -271,10 +271,10 @@ module msg_extractor_fsm (
               end
               else if (msg_length == 16'd3)
               begin
-                if (msg_count == 0)
-                  nextstate   = LAST_PKT;
-                else
+                if (msg_count > 0)
                   nextstate   = PARTIAL_PKT;
+                else
+                  nextstate   = LAST_PKT;
                 nx_msg_count  = msg_count - 16'd1;
                 nx_msg_length = in_data[39:24] - 16'd3;
                 nx_payload    = {payload , in_data[63:40]};
@@ -285,10 +285,10 @@ module msg_extractor_fsm (
               end
               else if (msg_length == 16'd4)
               begin
-                if (msg_count == 0)
-                  nextstate   = LAST_PKT;
-                else
+                if (msg_count > 0)
                   nextstate   = PARTIAL_PKT;
+                else
+                  nextstate   = LAST_PKT;
                 nx_msg_count  = msg_count - 16'd1;
                 nx_msg_length = in_data[31:16] - 16'd2;
                 nx_payload    = {payload , in_data[63:32]};
@@ -299,10 +299,10 @@ module msg_extractor_fsm (
               end
               else if (msg_length == 16'd5)
               begin
-                if (msg_count == 0)
-                  nextstate   = LAST_PKT;
-                else
+                if (msg_count > 0)
                   nextstate   = PARTIAL_PKT;
+                else
+                  nextstate   = LAST_PKT;
                 nx_msg_count  = msg_count - 16'd1;
                 nx_msg_length = in_data[23:8] - 16'd1;
                 nx_payload    = {payload , in_data[63:24]};
@@ -313,10 +313,10 @@ module msg_extractor_fsm (
               end
               else if (msg_length == 16'd6)
               begin
-                if (msg_count == 0)
-                  nextstate   = LAST_PKT;
-                else
+                if (msg_count > 0)
                   nextstate   = PARTIAL_PKT;
+                else
+                  nextstate   = LAST_PKT;
                 nx_msg_count  = msg_count - 16'd1;
                 nx_msg_length = in_data[15:0];
                 nx_payload    = {payload , in_data[63:16]};
