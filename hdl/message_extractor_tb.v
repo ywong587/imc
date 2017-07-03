@@ -63,14 +63,11 @@ initial begin
   @(posedge reset_n); $display("===============================================================================================================" );
                       $display("          out_data (hex)                                          |      out_bytemask (binary)      | out_valid" );
                       $display("===============================================================================================================" );
-
 end
 always @(posedge clk)
 begin
     if (out_valid)
-//        $display("output pakets = %h, out_bytemask = %b out_valid = %b"  , out_data, out_bytemask, out_valid );
         $display("%h | %b | %b"  ,out_data, out_bytemask, out_valid );
-
 end
 
 initial

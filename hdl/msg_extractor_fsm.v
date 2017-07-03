@@ -277,7 +277,7 @@ module msg_extractor_fsm (
                   nextstate   = PARTIAL_PKT;
                 nx_msg_count  = msg_count - 16'd1;
                 nx_msg_length = in_data[39:24] - 16'd3;
-                nx_payload    = {payload0 , in_data[63:40]};
+                nx_payload    = {payload , in_data[63:40]};
                 nx_payload0   = in_data[23:0];
                 nx_vout         = 1'b1;
                 nx_payload_mask = {payload_mask , {3{1'b1}}} ;
@@ -291,7 +291,7 @@ module msg_extractor_fsm (
                   nextstate   = PARTIAL_PKT;
                 nx_msg_count  = msg_count - 16'd1;
                 nx_msg_length = in_data[31:16] - 16'd2;
-                nx_payload    = {payload0 , in_data[63:32]};
+                nx_payload    = {payload , in_data[63:32]};
                 nx_payload0   = in_data[15:0];
                 nx_vout         = 1'b1;
                 nx_payload_mask = {payload_mask , {4{1'b1}}} ;
@@ -305,7 +305,7 @@ module msg_extractor_fsm (
                   nextstate   = PARTIAL_PKT;
                 nx_msg_count  = msg_count - 16'd1;
                 nx_msg_length = in_data[23:8] - 16'd1;
-                nx_payload    = {payload0 , in_data[63:24]};
+                nx_payload    = {payload , in_data[63:24]};
                 nx_payload0   = in_data[7:0];
                 nx_vout         = 1'b1;
                 nx_payload_mask = {payload_mask , {5{1'b1}}} ;
@@ -319,7 +319,7 @@ module msg_extractor_fsm (
                   nextstate   = PARTIAL_PKT;
                 nx_msg_count  = msg_count - 16'd1;
                 nx_msg_length = in_data[15:0];
-                nx_payload    = {payload0 , in_data[63:16]};
+                nx_payload    = {payload , in_data[63:16]};
                 nx_payload0   = 256'd0;;
                 nx_vout         = 1'b1;
                 nx_payload_mask = {payload_mask , {6{1'b1}}} ;
@@ -330,7 +330,7 @@ module msg_extractor_fsm (
                 nextstate     = SPLIT_LEN_PKT;
                 nx_msg_count  = msg_count - 16'd1;
                 nx_msg_length = in_data[7:0];
-                nx_payload    = {payload0 , in_data[63:8]};
+                nx_payload    = {payload , in_data[63:8]};
                 nx_payload0   = 256'd0;;
                 nx_vout         = 1'b1;
                 nx_payload_mask = {payload_mask , {7{1'b1}}} ;
@@ -341,7 +341,7 @@ module msg_extractor_fsm (
                 nextstate     = FULL_PKT;
                 nx_msg_count  = msg_count;
                 nx_msg_length = msg_length - 16'd8;
-                nx_payload    = {payload0 , in_data[63:0]};
+                nx_payload    = {payload , in_data[63:0]};
                 nx_payload0   = 256'd0;;
                 nx_vout         = 1'b0;
                 nx_payload_mask = {payload_mask , {8{1'b1}}} ;
